@@ -30,11 +30,15 @@ metacore <- spec_to_metacore("metadata/specs.xlsx", where_sep_sheet = FALSE)
 adsl_spec <- metacore %>%
   select_dataset("ADSL")
 
+
+
 adsl_preds <- dm %>%
               transmute(AGE = AGE, AGEU = AGEU, ARM = ARM, DTHFL = DTHFL, ETHNIC = ETHNIC,
               RACE = RACE, RFENDTC = RFENDTC, RFSTDTC = RFSTDTC, SEX = SEX,
-              SITEID = SITEID, STUDYID = STUDYID, SUBJID = SUBJID, USUBJID = USUBJID,
+              SITEID = SITEID, SITEGR1=SITEID, STUDYID = STUDYID, SUBJID = SUBJID, USUBJID = USUBJID,
               TRT01P = ARM, TRT01A = ACTARM, ARMCD = ARMCD)
+
+
 
 ex_ext <- ex %>%
   derive_vars_dtm(
@@ -113,17 +117,98 @@ adsl <- adsl %>%
 
   )
 
-format_agegr1n <- function(var_input) {
+adsl <- adsl %>%
+  mutate(
+    AGEGR1N = as.factor(AGEGR1),
+
+  )
+
+format_trt01an<- function(var_input){
   case_when(
-    var_input =1 ~ "1",
-    var_input =2 ~ "2",
-    var_input =3 ~ "3",
-    TRUE ~ "missing"
+    var_input == "Placebo" ~ 0 ,
+    var_input == "Xanomeline Low Dose" ~ 54 ,
+    var_input == "Xanomeline High Dose" ~ 81 ,
+    TRUE~NA
   )
 }
 
 adsl <- adsl %>%
   mutate(
-    AGEGR1N = format_agegr1n(AGEGR1),
-
+    TRT01AN = format_trt01an(TRT01A),
   )
+
+format_trt01pn<- function(var_input){
+  case_when(
+    var_input == "Placebo" ~ 0 ,
+    var_input == "Xanomeline Low Dose" ~ 54 ,
+    var_input == "Xanomeline High Dose" ~ 81 ,
+    TRUE~NA
+  )
+}
+
+adsl <- adsl %>%
+  mutate(
+    TRT01PN = format_trt01pn(TRT01P),
+  )
+
+format_racen<- function(var_input){
+  case_when(
+    var_input == "AMERICAN INDIAN OR ALASKA NATIVE" ~ 1 ,
+    var_input == "ASIAN" ~ 2 ,
+    var_input == "BLACK OR AFRICAN AMERICAN" ~ 3 ,
+    var_input == "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" ~ 5 ,
+    var_input == "WHITE" ~ 6 ,
+    TRUE~NA
+  )
+}
+
+adsl <- adsl %>%
+  mutate(
+    RACEN = format_racen(RACE),
+  )
+
+
+adsl <- adsl %>%
+  derive_vars_merged(
+    dataset_add = vs,
+    by_vars = vars(STUDYID, USUBJID),
+    new_vars = vars(WEIGHTBL=VSSTRESN),
+    filter_add = VSBLFL == "Y" & VSTESTCD == "WEIGHT"
+  )
+
+adsl <- adsl %>%
+  derive_vars_merged(
+    dataset_add = vs,
+    by_vars = vars(STUDYID, USUBJID),
+    new_vars = vars(HEIGHTBL=VSSTRESN),
+    filter_add =  VSTESTCD == "HEIGHT"
+  )
+
+adsl <- adsl %>%
+    mutate(BMIBL= WEIGHTBL/((HEIGHTBL/100)**2))
+
+format_bmigrp<- function(var_input){
+  case_when(
+    var_input < 25  ~ "<25",
+    between(var_input, 25, 30) ~ "25-<30",
+    var_input >= 30 ~ ">=30" ,
+    TRUE~NA
+  )
+}
+
+adsl <- adsl %>%
+  mutate(
+    BMIBLGR1 = format_bmigrp(BMIBL),
+  )
+
+adsl <- adsl %>%
+  derive_vars_merged(
+    dataset_add = sv,
+    by_vars = vars(STUDYID, USUBJID),
+    new_vars = vars(VISIT1DT=SVSTDTC),
+    filter_add = VISITNUM == 1
+  )
+
+
+adsl<- adsl %>%
+     mutate(SAFFL=)
