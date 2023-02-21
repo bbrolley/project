@@ -248,7 +248,9 @@ adsl <- adsl %>%
     by_vars = vars(STUDYID,USUBJID),)
 
 
-       DURDIS<-interval(adsl$VISIT1DT,adsl$VISIT1DT)
-DURDIS
+adsl <- adsl %>%
+
+        derive_vars_duration(DURDIS,new_var_unit=NULL, DISONSDT,VISIT1DT,in_unit="days",out_unit="months")
+
 
 
