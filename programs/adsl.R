@@ -86,21 +86,18 @@ ds_ext <- derive_vars_dt(
   new_vars_prefix = "DSST"
 )
 
-adsl <- adsl %>%
-  derive_vars_merged(
-    dataset_add = ds_ext,
-    by_vars = vars(STUDYID, USUBJID),
-    new_vars = vars(EOSDT = DSSTDT),
-    filter_add = DSCAT == "DISPOSITION EVENT" & DSDECOD != "SCREEN FAILURE"
-  )
 
 adsl <- adsl %>%
   derive_var_disposition_status(
     dataset_ds = ds,
-    new_var = EOSSTT,
+    new_var = DCDECOD,
     status_var = DSDECOD,
     filter_ds = DSCAT == "DISPOSITION EVENT"
   )
+
+adsl <- adsl %>%
+  mutate(DISCONFL=if_else(DCREASD !='COMPLETED',"Y",""))
+
 
 format_agegr1 <- function(var_input) {
   case_when(
@@ -211,4 +208,46 @@ adsl <- adsl %>%
 
 
 adsl<- adsl %>%
-     mutate(SAFFL=)
+     mutate(ITTFL= if_else(ARMCD != '',"Y","N"))
+
+
+adsl<- adsl %>%
+  mutate(SAFFL= if_else(ITTFL == 'Y' &TRTSDT !='',"Y","N"))
+
+
+qs_ext <- qs %>%
+            filter(QSCAT=="MINI-MENTAL STATE") %>%
+            group_by(USUBJID) %>%
+            summarize(MMSETOT=sum(as.numeric(QSORRES))) %>%
+            select(USUBJID,MMSETOT)
+
+adsl <- adsl %>%
+  derive_vars_merged(
+    dataset_add = qs_ext,
+    by_vars = vars(USUBJID),
+
+  )
+
+adsl <- adsl %>%
+       derive_vars_dt(
+       dtc = RFENDTC,
+       new_vars_prefix="RFENDT"
+)
+
+mh_ext<- mh %>%
+       filter(MHCAT=="PRIMARY DIAGNOSIS") %>%
+        derive_vars_dt(
+        dtc = MHSTDTC,
+        new_vars_prefix="DISONS") %>%
+        select(STUDYID,USUBJID,DISONSDT)
+
+adsl <- adsl %>%
+  derive_vars_merged(
+    dataset_add = mh_ext,
+    by_vars = vars(STUDYID,USUBJID),)
+
+
+       DURDIS<-interval(adsl$VISIT1DT,adsl$VISIT1DT)
+DURDIS
+
+
