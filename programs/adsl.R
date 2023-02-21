@@ -15,6 +15,7 @@ library(xportr)
 # https://pharmaverse.github.io/admiral/articles/admiral.html#handling-of-missing-values
 
 
+
 dm <- convert_blanks_to_na(read_xpt(file.path("sdtm", "dm.xpt")))
 ds <- convert_blanks_to_na(read_xpt(file.path("sdtm", "ds.xpt")))
 ex <- convert_blanks_to_na(read_xpt(file.path("sdtm", "ex.xpt")))
