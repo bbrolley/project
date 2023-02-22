@@ -8,6 +8,9 @@ library(metacore)
 library(metatools)
 library(xportr)
 
+
+library(chatgpt)
+
 # read source -------------------------------------------------------------
 # When SAS datasets are imported into R using read_sas(), missing
 # character values from SAS appear as "" characters in R, instead of appearing
@@ -97,7 +100,19 @@ adsl <- adsl %>%
   )
 
 adsl <- adsl %>%
+  derive_var_disposition_status(
+    dataset_ds = ds,
+    new_var = DCREASD,
+    status_var = DSTERM,
+    filter_ds = DSCAT == "DISPOSITION EVENT"
+
+  )
+
+adsl <- adsl %>%
   mutate(DISCONFL=if_else(DCREASD !='COMPLETED',"Y",""))
+
+adsl <- adsl %>%
+  mutate(DSRAEFL=if_else(DCREASD =='ADVERSE EVENT',"Y",""))
 
 
 format_agegr1 <- function(var_input) {
@@ -207,6 +222,9 @@ adsl <- adsl %>%
     filter_add = VISITNUM == 1
   )
 
+adsl<- adsl %>%
+  mutate(VISIT1DT = as.Date(VISIT1DT))
+
 
 adsl<- adsl %>%
      mutate(ITTFL= if_else(ARMCD != '',"Y","N"))
@@ -242,6 +260,7 @@ mh_ext<- mh %>%
         new_vars_prefix="DISONS") %>%
         select(STUDYID,USUBJID,DISONSDT)
 
+
 adsl <- adsl %>%
   derive_vars_merged(
     dataset_add = mh_ext,
@@ -249,8 +268,26 @@ adsl <- adsl %>%
 
 
 adsl <- adsl %>%
-
         derive_vars_duration(DURDIS,new_var_unit=NULL, DISONSDT,VISIT1DT,in_unit="days",out_unit="months")
 
+format_durgrp<- function(var_input){
+  case_when(
+    var_input < 12  ~ "<12",
+    var_input >= 12 ~ ">=12" ,
+    TRUE~NA
+  )
+}
 
+adsl <- adsl %>%
+  mutate(
+    DURDSGR1 = format_durgrp(DURDIS),
+  )
+
+adsl <- adsl %>%
+  derive_vars_merged(
+    dataset_add = sc,
+    by_vars = vars(STUDYID, USUBJID),
+    new_vars = vars(EDUCLVL=SCSTRESN),
+    filter_add = SCTESTCD=="EDLEVEL"
+  )
 
