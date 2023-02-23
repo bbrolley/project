@@ -291,3 +291,47 @@ adsl <- adsl %>%
     filter_add = SCTESTCD=="EDLEVEL"
   )
 
+
+
+COMPxxFL <- function(sv, adsl, visitnum, xx){
+                    vis_usub <- sv %>% filter(VISITNUM==visitnum) %>%
+                    select(USUBJID, SVSTDTC, VISITNUM)
+                    out <- full_join(vis_usub, adsl, by ="USUBJID") %>% mutate(SVSTDTC = SVSTDTC %>% ymd, RFENDTC = RFENDTC %>% ymd) %>%
+                    mutate(aux = if_else(VISITNUM == visitnum & RFENDTC>=SVSTDTC,"Y","N")) %>%
+                    mutate(!!paste0("COMP", xx, "FL") := ifelse(is.na(aux), "N", "Y")) %>%
+                    select(USUBJID, !!paste0("COMP", xx, "FL")) %>%
+                    arrange(., USUBJID)
+                    return(out)
+                    }
+
+
+adsl <- adsl %>%
+        left_join(.,COMPxxFL(sv, adsl, 10, 16),by="USUBJID") %>%
+        left_join(.,COMPxxFL(sv, adsl, 12, 24),by="USUBJID") %>%
+        left_join(.,COMPxxFL(sv, adsl, 8, 8),by="USUBJID")
+
+
+adsl<- adsl %>%
+           mutate(ARMN=case_when(ARM=="Placebo"~0,
+                                 ARM== "Xanomeline Low Dose"~54,
+                                 TRUE ~81))
+
+adsl<- adsl %>%
+       mutate(CUMDOSE=case_when(ARMN %in% c(0,54)~ TRT01PN*TRTDURD,
+                                TRUE~999))
+
+
+# cumdos <- left_join(adsl %>% select(USUBJID,TRTSDT,TRTEDT,TRT01PN,DCDECOD),sv %>% select(USUBJID, VISITNUM, SVSTDTC),by="USUBJID") %>%
+#           group_by(USUBJID) %>%
+#           summarise(LVIS=last(VISITNUM)) %>%
+#           ungroup
+
+adsl <-    qs %>%
+           select(USUBJID,QSCAT,VISITNUM) %>%
+           filter(QSCAT %in% c("ALZHEIMER'S DISEASE ASSESSMENT SCALE","CLINICIAN'S INTERVIEW-BASED IMPRESSION OF CHANGE (CIBIC+)") & VISITNUM > 3) %>%
+           mutate(EFFFL="Y") %>%
+           select(USUBJID,EFFFL) %>%
+           unique() %>% right_join(.,adsl,by="USUBJID") %>%
+           mutate(EFFFL = if_else(EFFFL=="Y","Y","N"))
+
+
